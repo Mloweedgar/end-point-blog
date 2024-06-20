@@ -802,4 +802,4 @@ These techniques will help you navigate your filesystem efficiently, allowing yo
 
 Mastering the command line can transform your productivity and efficiency. We've covered combining commands with pipes, mastering shell techniques, recalling and editing commands efficiently, and navigating the filesystem with speed. Dive in, experiment, and watch your skills grow!
 
-For further reading, I highly recommend the book "Efficient Linux at the Command Line," recommended by my colleague, Kevin Quaranta. It took my command-line skills to the next level and inspired many of the tips and tricks shared in this blog.
+For further reading, I highly recommend the book ["Efficient Linux at the Command Line"](https://www.oreilly.com/library/view/efficient-linux-at/9781098113391/) recommended by my colleague, Kevin Quaranta. It took my command-line skills to the next level and inspired many of the tips and tricks shared in this blog.
