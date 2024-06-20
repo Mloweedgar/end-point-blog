@@ -693,24 +693,6 @@ The `cd` (change directory) command is fundamental for navigation. Here are some
   cd ~username
   ```
 
-#### Tab Completion
-
-Tab completion helps you auto-complete directory names, saving you time and keystrokes.
-
-- **Basic Example**:
-
-  ```sh
-  cd /usr/share/
-  ```
-
-- **Ambiguous Names**:
-  If multiple names match, pressing Tab twice will list possible completions.
-
-  ```sh
-  cd /usr/s<Tab><Tab>
-  sbin/  share/  src/
-  ```
-
 #### CDPATH
 
 Set the CDPATH variable to define base directories for quick navigation.
