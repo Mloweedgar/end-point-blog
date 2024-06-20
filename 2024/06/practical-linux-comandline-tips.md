@@ -795,7 +795,6 @@ Let's say you start in your home directory (`~/`) and execute the following comm
    ```
 
    Now you can use `gd` to push directories onto the stack and `pd` to pop directories off the stack.
-  ```
 
 These techniques will help you navigate your filesystem efficiently, allowing you to focus more on your tasks and less on typing long paths.
 
