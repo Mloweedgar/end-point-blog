@@ -16,7 +16,7 @@ tags:
 
 <!-- Photo by Seth Jensen, 2024. -->
 
-Feeling stuck with basic Linux commands? You're not alone! Many people know some commands but don't feel efficient. The good news is that with some know-how and common commands, you can transform your skills.
+Feeling stuck with basic Linux commands? You're not alone! Many people know some commands but don't feel efficient. The good news is that with some know-how and common commands,you can transform your skills.
 
 In this post, you'll learn to combine commands with pipes, master shell techniques, efficiently recall and edit past commands, and navigate the filesystem with speed. Let's dive in!
 
