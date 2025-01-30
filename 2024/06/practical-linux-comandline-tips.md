@@ -45,7 +45,7 @@ man grep
 **Sample Data (`application.log`)**:
 
 ```plain
-INFO 2024-06-07 User login successful
+INFO 2024-06-07 User login successfully
 ERROR 2024-06-07 Failed to connect to database
 INFO 2024-06-07 User logout
 ERROR 2024-06-07 Timeout while retrieving data
