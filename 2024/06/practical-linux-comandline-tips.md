@@ -61,7 +61,7 @@ grep 'ERRORS' application.log | wc -l
 
 **Explanation**:
 
-- `grep 'ERROR' application.log` searches for lines containing "ERROR" in `application.log`.
+- `grep 'ERRORS' application.log` searches for lines containing "ERROR" in `application.log`.
 - The output is then passed to `wc -l`, which counts the number of lines, giving you the total number of error messages. `wc` is short for "word count", while `-l` stands for lines.
 
 **Expected Output**:
