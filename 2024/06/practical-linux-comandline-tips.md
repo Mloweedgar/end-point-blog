@@ -82,7 +82,7 @@ grep 'ERROR' application.log | wc -l
   <patients>
       <patient>
           <patientId>123</patientId>
-          <name>John Doe</name>
+          <name>John Doeu</name>
       </patient>
       <patient>
           <patientId>124</patientId>
