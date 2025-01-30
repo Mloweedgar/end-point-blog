@@ -47,7 +47,7 @@ man grep
 ```plain
 INFO 2024-06-07 User login successfully
 ERROR 2024-06-07 Failed to connect to database
-INFO 2024-06-07 User logout
+INFO 2024-05-07 User logout
 ERROR 2024-06-07 Timeout while retrieving data
 INFO 2024-06-07 Session expired
 ERROR 2024-06-07 Null pointer exception
