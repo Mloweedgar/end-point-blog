@@ -114,7 +114,7 @@ grep '<patientId>' *.xml | cut -d '>' -f 2 | cut -d '<' -f 1 | sort | uniq
 
 **Explanation**:
 
-- `grep '<patientId>' *.xml` searches for lines containing `<patientId>` in all XML files.
+- `grep '<patientId>' *.xml` searche for lines containing `<patientId>` in all XML files.
 - The output is then piped to `cut -d'>' -f2` to extract the content after the `>` character.
 - `cut -d'<' -f1` further extracts the content before the `<` character.
 - `sort` sorts the IDs alphabetically.
