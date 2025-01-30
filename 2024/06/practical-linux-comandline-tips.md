@@ -12,7 +12,7 @@ tags:
 - tips
 ---
 
-![A shadow draw sharp lines on brightly lit concrete. On the left side is a thick line descending across the full height diagonally, connected at the top to a subtly curved line which spans the full width of the image. It is connected by a thinner parallel diagonal line, which has two more horizontal lines equally spaced across the image.](/blog/2024/06/practical-linux-comandline-tips/three-shadows.webp)
+![A shadow draw sharp lines on brightly lit . On the left side is a thick line descending across the full height diagonally, connected at the top to a subtly curved line which spans the full width of the image. It is connected by a thinner parallel diagonal line, which has two more horizontal lines equally spaced across the image.](/blog/2024/06/practical-linux-comandline-tips/three-shadows.webp)
 
 <!-- Photo by Seth Jensen, 2024. -->
 
