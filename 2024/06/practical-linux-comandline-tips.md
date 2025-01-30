@@ -56,7 +56,7 @@ ERROR 2024-06-07 Null pointer exception
 **Command**:
 
 ```plain
-grep 'ERROR' application.log | wc -l
+grep 'ERRORS' application.log | wc -l
 ```
 
 **Explanation**:
