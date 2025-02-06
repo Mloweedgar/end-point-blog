@@ -36,7 +36,7 @@ Similarly, in AI:
 - **Parameters (weights & biases)** → Adjust how the model processes the data.  
 - **Output** → A prediction (e.g., “This is a cat” 🐱).  
 
-For a deeper explanation, you can check this [comprehensive guide on AI parameters](https://huggingface.co/blog/transformers).  
+For a deeper explanation, you can check this []).  
 
 ### **🔹 Why Do AI Models Need Billions of Parameters?**  
 **More parameters = More learning capacity.**  
