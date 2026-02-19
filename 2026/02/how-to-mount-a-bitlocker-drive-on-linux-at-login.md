@@ -40,6 +40,16 @@ apt-get install dislocker ntfs-3g
 
 > I was able to mount the filesystem as read-only with the default `ntfs` driver, but to write I had to install `ntfs-3g`.
 
+### Disabling Fast Startup in Windows
+
+If Fast Startup is enabled in Windows, the drive can get corrupted or be forced into read-only mode in Linux. To prevent this, disable Fast Startup by entering the following in an administrator PowerShell:
+
+```
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power\" -Name "HiberbootEnabled" -Value "0"
+```
+
+You can also disable it from the control panel — just search "Fast Startup".
+
 ### Mounting on login with `fstab`
 
 It's well and good to mount a drive one time, but since this is a persistent volume, I want it to be mounted consistently on boot. This is where `fstab` comes in.
