@@ -20,7 +20,7 @@ tags:
 
 When we started getting our internal Timesheet app ready to go open source, one problem dominated the work: the backend was still on Ruby 2.4 and Rails 5.
 
-The app still worked. That was not the issue. The issue was that both versions had been end-of-life for years, and this was not a toy app. It tracks hours, billing, reports, users, roles, and permissions. Quiet mistakes matter more than loud crashes in software like that.
+The app still worked. That was not the issue. The issue was that both versions had been end-of-life for years. It tracks hours, billing, reports, users, roles, and permissions. Quiet mistakes matter more than loud crashes in software like that.
 
 I used AI heavily during the upgrade. But the useful part was not "AI wrote the code." The useful part was simpler: AI made exploration cheap. I still had to own the risky decisions, the risky edits, and the proof that the app still behaved correctly.
 
