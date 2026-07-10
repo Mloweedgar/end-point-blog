@@ -107,6 +107,16 @@ The obvious risk was silent regressions in hours, money, date behavior, or SQL o
 
 I also ran a throwaway spike first: build a fresh Rails 8 app, move the old code in, see what breaks, and treat that result as a risk map rather than final work. AI made that exploration cheap. The real upgrade still had to be done carefully by hand.
 
+But "see what breaks" needs a definition. Mine was one command: `bin/rails zeitwerk:check`. It forces every file in the app to load at once, so a renamed class or a removed method fails at startup instead of hiding until some request hits it.
+
+The principle behind it:
+
+boot all at once, verify a piece at a time.
+
+You cannot run half the app on Rails 5 and half on Rails 8. Either the whole thing starts up or it does not. All the small, area-by-area checking only counts once it does.
+
+Same catch as everywhere else: a clean start proves the code loads, not that it works. The check passed and the suite was green while the app was still broken behind login. Loading is the floor, not the finish line.
+
 A good example was an old initializer that registered custom PostgreSQL types. It looked like exactly the kind of strange legacy patch you want to delete during a modernization pass. But zooming out first changed the question from "can I remove this?" to "what behavior is this preserving?" The answer was: interval parsing the app still relied on, and a custom `cron_spec` type used by scheduling fields. That led me to port it carefully instead of deleting it blindly.
 
 ## A few small fixes that show the real work
