@@ -22,7 +22,7 @@ When we started getting our internal Timesheet app ready to go open source, one 
 
 The app still worked. That was not the issue. The issue was that both versions had been end-of-life for years. It tracks hours, billing, reports, users, roles, and permissions. Quiet mistakes matter more than loud crashes in software like that.
 
-I used AI heavily during the upgrade. But the useful part was not "AI wrote the code." The useful part was simpler: AI made exploration cheap. I still had to own the risky decisions, the risky edits, and the proof that the app still behaved correctly. The real question is never whether the tool can generate code — it clearly can — but who owns correctness when the code matters.
+I used AI heavily during the upgrade. But the useful part was not "AI wrote the code." The useful part was simpler: AI made exploration cheap. I still had to own the risky decisions, the risky edits, and the proof that the app still behaved correctly. The real question is never whether the tool can generate code. It clearly can. It is who owns correctness when the code matters.
 
 ## The rule that kept this safe
 
@@ -47,11 +47,11 @@ That last part mattered. Open-sourcing a project you do not understand is not mu
 
 ## Where AI actually helped
 
-I found AI genuinely useful in four places.
+I found AI useful in four places.
 
 ### Understanding code I did not write
 
-Before I touched a file, I often needed a quick, grounded explanation of what it did, what depended on it, and what would be risky to change.
+Before I touched a file, I often needed a quick explanation of what it did, what depended on it, and what would be risky to change.
 
 AI was good at helping me form that first mental model faster. Not perfectly, and never without checking, but faster.
 
@@ -126,7 +126,7 @@ One example was the development logger:
 + config.logger = ActiveSupport::Logger.new(path)
 ```
 
-That one-word change mattered because a plain `Logger` no longer has the `#silence` method that `activerecord-session_store` calls on every session lookup; on Rails 8 only `ActiveSupport::Logger` still defines it. The result was that every logged-in request returned a 500. No backend spec caught it. Running the real app did.
+That one-word change mattered because a plain `Logger` no longer has the `#silence` method that `activerecord-session_store` calls on every session lookup. On Rails 8 only `ActiveSupport::Logger` still defines it. The result was that every logged-in request returned a 500. No backend spec caught it. Running the real app did.
 
 Another example was date formatting:
 
@@ -145,7 +145,7 @@ The quieter class of bug was even more interesting. In the hours code, a plain `
 
 That same pattern showed up elsewhere too:
 
-- **SQL array comparisons needed explicit `::int[]` casts.** Rails 8 sends `?` array binds as `text[]`, so a query like `array[?] && role_ids` became `text[] && integer[]` — an operator Postgres does not have, which meant a 500. This one bit twice, in two different reports.
+- **SQL array comparisons needed explicit `::int[]` casts.** Rails 8 sends `?` array binds as `text[]`, so a query like `array[?] && role_ids` became `text[] && integer[]`, an operator Postgres does not have, which meant a 500. This one bit twice, in two different reports.
 - **A raw SQL `order(...)` needed `Arel.sql`.** Rails blocks unsafe raw SQL in `order`, so `order(ts_rank(...))` had to be wrapped in `Arel.sql` (safe here because the search phrase is reduced to word characters first).
 
 The custom PostgreSQL type I mentioned earlier is a good example of the mechanical side of the same work. Porting it meant swapping a Rails idiom that no longer exists for the modern one: `alias_method_chain` for `prepend` + `super`.
@@ -177,7 +177,7 @@ None of those are exciting alone. Together, they are what a real upgrade looks l
 
 ## The working rules mattered as much as the tool
 
-The most useful thing I wrote down was not code. It was the working rules: small steps then stop and check, explain before doing, ask before risky actions, and when I wanted to own a change, hand me the diff to apply myself. I kept a few plain files in the repo — general rules, how we were working, and the current resume point — so a fresh session could start with "read the notes and continue." Small, but it kept the collaboration consistent and easy to pick back up.
+The most useful thing I wrote down was not code. It was the working rules: small steps then stop and check, explain before doing, ask before risky actions, and when I wanted to own a change, hand me the diff to apply myself. I kept a few plain files in the repo: general rules, how we were working, and the current resume point. A fresh session could start with "read the notes and continue." Small, but it kept the collaboration consistent and easy to pick back up.
 
 ## How I checked the result
 
@@ -203,7 +203,7 @@ One mistake is worth admitting, because it shows how easily this still bites. Ea
 
 The main lesson was not "AI made me faster." That is true, but not very interesting.
 
-The more useful lesson is where the line fell. AI was best at cheap exploration — unfamiliar code, framework changes, likely causes, candidate fixes, upgrade paths I could throw away. The final answer still needed a human — judgment about what belonged in the upgrade, ownership of the risky edits, evidence that the app still behaved correctly, and a git history a reviewer can read.
+The more useful lesson is where the line fell. AI was best at cheap exploration: unfamiliar code, framework changes, likely causes, candidate fixes, upgrade paths I could throw away. The final answer still needed a human: judgment about what belonged in the upgrade, ownership of the risky edits, evidence that the app still behaved correctly, and a git history a reviewer can read.
 
 That approach got me to a Rails 8 app with 145 green specs, 18 green end-to-end tests, a clean 74-check manual pass on the important workflows, and 29 small commits that a reviewer can actually read.
 
