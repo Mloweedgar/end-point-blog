@@ -18,11 +18,11 @@ tags:
 
 <!-- Illustration created with AI direction by Edgar Mlowe, 2026. -->
 
-When we started getting our internal Timesheet app ready to go open source, one problem dominated the work: the backend was still on Ruby 2.4 and Rails 5.
+When we started getting our internal Timesheet app ready to go open source, one problem dominated the work: the backend was still on Ruby 2.4.10 and Rails 5.0.1.
 
 The app still worked. That was not the issue. The issue was that both versions had been end-of-life for years. It tracks hours, billing, reports, users, roles, and permissions. Quiet mistakes matter more than loud crashes in software like that.
 
-I used AI heavily during the upgrade. But the useful part was not "AI wrote the code." The useful part was simpler: AI made exploration cheap. I still had to own the risky decisions, the risky edits, and the proof that the app still behaved correctly.
+I used AI heavily during the upgrade. But the useful part was not "AI wrote the code." The useful part was simpler: AI made exploration cheap. I still had to own the risky decisions, the risky edits, and the proof that the app still behaved correctly. The real question is never whether the tool can generate code — it clearly can — but who owns correctness when the code matters.
 
 ## The rule that kept this safe
 
@@ -30,15 +30,11 @@ My rule from the start was simple:
 
 > AI helps with the exploring and the first draft. I own every change.
 
-That rule shaped everything else.
-
 I did not want AI deciding what was safe to merge. I wanted it helping me understand old code, explain removed Rails behavior, suggest likely fixes, and argue trade-offs. If a change touched hours, money, reports, or anything else that could fail quietly, I needed to understand it well enough to explain it in plain English before I trusted it.
-
-That is where I think a lot of AI conversations go wrong. The real question is not whether the tool can generate code. It clearly can. The real question is who owns correctness when the code matters.
 
 ## Why this upgrade was a good test
 
-The app was about eight major Rails versions behind. The original developers were no longer here. The codebase was not tiny either: around 595 source files and roughly 130,000 lines of code.
+The app was about eight major Rails versions behind: Ruby 2.4.10 and Rails 5.0.1, both years past end-of-life, up to Ruby 3.3.6 and Rails 8.1.3. The original developers were no longer here, and the codebase was not small.
 
 So the job was not just "get it to boot on Rails 8." It was:
 
@@ -55,7 +51,7 @@ I found AI genuinely useful in four places.
 
 ### Understanding code I did not write
 
-Nobody who wrote the original system was still around. Before I touched a file, I often needed a quick, grounded explanation of what it did, what depended on it, and what would be risky to change.
+Before I touched a file, I often needed a quick, grounded explanation of what it did, what depended on it, and what would be risky to change.
 
 AI was good at helping me form that first mental model faster. Not perfectly, and never without checking, but faster.
 
@@ -97,7 +93,7 @@ But that is where its job stopped. A suggested fix is not a verified fix.
 
 The biggest decision was whether to do a long, step-by-step Rails upgrade or transplant the code into a fresh Rails 8 app.
 
-I did not want AI choosing that for me. I used it to help compare the options, but I made the decision with a simple rhythm: zoom out to define the real problem and compare options, zoom in to plan the work, then zoom out again to do a pre-mortem. AI helped me explore the options. It did not choose the path.
+I did not want AI choosing that for me. I used it to compare the options, but I made the decision myself, with a simple rhythm: zoom out to define the real problem and compare options, zoom in to plan the work, then zoom out again for a pre-mortem.
 
 For this app, I chose a transplant.
 
@@ -130,7 +126,7 @@ One example was the development logger:
 + config.logger = ActiveSupport::Logger.new(path)
 ```
 
-That one-word change mattered because a plain `Logger` no longer had a method a session-store dependency called on every logged-in request. The result was that every logged-in request returned a 500. No backend spec caught it. Running the real app did.
+That one-word change mattered because a plain `Logger` no longer has the `#silence` method that `activerecord-session_store` calls on every session lookup; on Rails 8 only `ActiveSupport::Logger` still defines it. The result was that every logged-in request returned a 500. No backend spec caught it. Running the real app did.
 
 Another example was date formatting:
 
@@ -149,27 +145,39 @@ The quieter class of bug was even more interesting. In the hours code, a plain `
 
 That same pattern showed up elsewhere too:
 
-- interval summation needed the right zero value instead of starting from `0`
-- SQL array comparisons needed explicit `::int[]` casts
-- a raw SQL `order(...)` needed `Arel.sql`
-- a custom PostgreSQL type registration had to move from an old monkey-patch style to a modern `prepend` + `super` approach
+- **SQL array comparisons needed explicit `::int[]` casts.** Rails 8 sends `?` array binds as `text[]`, so a query like `array[?] && role_ids` became `text[] && integer[]` — an operator Postgres does not have, which meant a 500. This one bit twice, in two different reports.
+- **A raw SQL `order(...)` needed `Arel.sql`.** Rails blocks unsafe raw SQL in `order`, so `order(ts_rank(...))` had to be wrapped in `Arel.sql` (safe here because the search phrase is reduced to word characters first).
+
+The custom PostgreSQL type I mentioned earlier is a good example of the mechanical side of the same work. Porting it meant swapping a Rails idiom that no longer exists for the modern one: `alias_method_chain` for `prepend` + `super`.
+
+```ruby
+# Rails 5: alias_method_chain, removed in modern Rails
+ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.class_eval do
+  def initialize_type_map_with_postgres_oids(mapping)
+    initialize_type_map_without_postgres_oids(mapping)
+    # ...register the cron_spec OID...
+  end
+  alias_method_chain :initialize_type_map, :postgres_oids
+end
+```
+
+```ruby
+# Rails 8: prepend + super
+module CustomPostgresTypes
+  def initialize_type_map(mapping = type_map)
+    super
+    oid = select_value("SELECT oid FROM pg_type WHERE typname = 'cron_spec'")
+    # ...register the cron_spec OID...
+  end
+end
+ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.prepend(CustomPostgresTypes)
+```
 
 None of those are exciting alone. Together, they are what a real upgrade looks like.
 
 ## The working rules mattered as much as the tool
 
-The most useful thing I wrote down during this project was not code. It was the working rules.
-
-The important ones were simple:
-
-- small steps, then stop and check
-- explain what you are doing before doing it
-- ask before risky actions
-- when I want to own a change, give me the diff and let me apply it myself
-
-I also kept a few plain files in the repo to survive context resets: one for general rules, one for how we were working, and one for the current resume point. Starting a fresh session could be as simple as "read the notes and continue."
-
-That sounds small, but it made the AI collaboration more consistent and made the work easier to pick up again later.
+The most useful thing I wrote down was not code. It was the working rules: small steps then stop and check, explain before doing, ask before risky actions, and when I wanted to own a change, hand me the diff to apply myself. I kept a few plain files in the repo — general rules, how we were working, and the current resume point — so a fresh session could start with "read the notes and continue." Small, but it kept the collaboration consistent and easy to pick back up.
 
 ## How I checked the result
 
@@ -189,26 +197,15 @@ That checklist probably deserves its own write-up. The important point here is t
 
 This process paid off. It found real regressions that the spec suite had not exercised, including login failures, a broken calendar path, and crashing totals. It also made the testing itself better, because the manual run did not just find bugs. It told me exactly which missing specs to add. Some of the new regression tests in the upgraded suite exist only because the checklist caught those failures first.
 
+One mistake is worth admitting, because it shows how easily this still bites. Early on I kept an old JSON library, `yajl-ruby`, because I assumed the API endpoints needed it. They did not. It was quietly patching `JSON.dump` so a few admin endpoints serialized their query results as real arrays, and the suite stayed green the entire time. The assumption only broke weeks later, when I removed the gem and three React admin pages started rendering a raw object string instead of a list. The fix was to stop relying on the patched `JSON.dump` and let Rails encode the response directly. The lesson was the same as everywhere else: an untested assumption is not a safe one, however green the suite looks.
+
 ## What I would do again
 
-The main lesson for me was not "AI made me faster." That is true, but not very interesting.
+The main lesson was not "AI made me faster." That is true, but not very interesting.
 
-The more useful lesson is that AI was best at cheap exploration:
+The more useful lesson is where the line fell. AI was best at cheap exploration — unfamiliar code, framework changes, likely causes, candidate fixes, upgrade paths I could throw away. The final answer still needed a human — judgment about what belonged in the upgrade, ownership of the risky edits, evidence that the app still behaved correctly, and a git history a reviewer can read.
 
-- exploring unfamiliar code
-- exploring framework changes
-- exploring likely causes
-- exploring candidate fixes
-- exploring upgrade paths with a throwaway spike
-
-The final answer still needed human ownership:
-
-- judgment about what belonged in the upgrade and what did not
-- ownership of the risky edits
-- evidence that the app still behaved correctly
-- a reviewable git history
-
-That approach got me to a Rails 8 app with 145 green specs, 18 green end-to-end tests, a clean 74-check manual pass on the important workflows, and 36 small commits that a reviewer can actually read.
+That approach got me to a Rails 8 app with 145 green specs, 18 green end-to-end tests, a clean 74-check manual pass on the important workflows, and 29 small commits that a reviewer can actually read.
 
 If I were doing another risky legacy upgrade with AI, I would keep the same rule:
 
