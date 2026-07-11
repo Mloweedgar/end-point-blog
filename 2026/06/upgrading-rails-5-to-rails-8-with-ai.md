@@ -127,6 +127,23 @@ That distinction, upgrade regression versus pre-existing bug versus unsupported 
 I used AI heavily, but the useful part was not that it wrote code. It was that it made exploring unfamiliar, obsolete code cheap. The pattern was always the same. It proposed, I verified, and nothing merged without evidence.
 
 - **Removed idioms.** One initializer extended Rails' PostgreSQL type map for the application's custom scheduling type using `alias_method_chain`, an old Rails extension pattern that no longer exists. AI explained the old idiom and drafted the replacement, a module hooked in with `prepend` and `super`. I kept the change only after confirming the scheduling fields still loaded, saved, and returned correctly.
+
+```ruby
+module CronSpecTypeRegistration
+  def initialize_type_map(mapping = type_map)
+    super
+    oid = select_value("SELECT oid FROM pg_type WHERE typname = 'cron_spec'")
+    if oid
+      mapping.register_type(
+        oid.to_i,
+        ActiveRecord::ConnectionAdapters::PostgreSQL::OID::SpecializedString.new(:cron_spec)
+      )
+    end
+  end
+end
+ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.prepend(CronSpecTypeRegistration)
+```
+
 - **Old behavior.** It explained why `to_s(:db)`, `sum` without a starting value, and untyped array binds behaved differently on the upgraded stack. I confirmed each against the running app, not against the explanation.
 - **Strategy.** I used it to compare transplant versus incremental and to run a pre-mortem before committing. I made the decision.
 
