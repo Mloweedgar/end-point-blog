@@ -1,10 +1,10 @@
 ---
 author: Edgar Mlowe
-title: "Upgrading Rails 5 to Rails 8 in One Leap with AI: What Broke After the Suite Went Green"
-description: "A first-hand Rails 5.0 to 8.1 upgrade done as a fresh-app transplant: what broke once the specs were green, why the tests missed it, and how we checked the app really still worked."
+title: "Upgrading Rails 5 to Rails 8 with AI: What Broke After 145 Specs Went Green"
+description: "A first-hand AI-assisted Rails 5.0 to Rails 8.1 fresh-app transplant: what broke after 145 specs passed, why the tests missed it, and how we verified the application's highest-risk workflows."
 featured:
   endpoint: true
-  image_url: /blog/2026/06/upgrading-rails-5-to-rails-8-in-one-leap-with-ai/cover.webp
+  image_url: /blog/2026/06/upgrading-rails-5-to-rails-8-with-ai/cover.webp
 date: 2026-06-23
 tags:
 - artificial-intelligence
@@ -14,17 +14,17 @@ tags:
 - troubleshooting
 ---
 
-![An editorial illustration of an engineer crossing from a tangled legacy software landscape toward a cleaner modern system, with AI present as a small guide rather than the driver.](/blog/2026/06/upgrading-rails-5-to-rails-8-in-one-leap-with-ai/cover.webp)
+![An editorial illustration of an engineer crossing from a tangled legacy software landscape toward a cleaner modern system, with AI present as a small guide rather than the driver.](/blog/2026/06/upgrading-rails-5-to-rails-8-with-ai/cover.webp)
 
 <!-- Illustration created with AI direction by Edgar Mlowe, 2026. -->
 
-We moved our internal Timesheet app from Ruby 2.4.10 and Rails 5.0.1 to Ruby 3.3.6 and Rails 8.1.3. We did it as a fresh-app transplant: build a clean Rails 8 app, move the old code into it, and get it running. The backend spec suite went green, 145 examples. The frontend end-to-end suite passed, 18 of 18. `bin/rails zeitwerk:check` loaded the whole app without complaint.
+We moved our internal Timesheet app, a legacy Rails application, from Ruby 2.4.10 and Rails 5.0.1 to Ruby 3.3.6 and Rails 8.1.3, with AI assisting the work throughout. We did it as a fresh-app transplant: build a clean Rails 8 app, move the old code into it, and get it running. The backend spec suite went green, 145 examples. The frontend end-to-end suite passed, 18 of 18. `bin/rails zeitwerk:check` eager-loaded the configured application code without complaint.
 
 The app was still broken. Every request behind login returned a 500. The calendar failed. Monthly totals crashed. None of the green tests noticed. Running the real app in a browser did.
 
-This post is about that gap. What broke in a direct Rails 5-to-8 transplant, why a green suite missed it, and how we established that the app actually still behaved the same. It tracks hours, billing, reports, users, roles, and permissions, so quiet wrong answers matter more than loud crashes.
+This post is about that gap. What broke in a direct Rails 5 to Rails 8 transplant, why a green suite missed it, and how we verified the application's highest-risk workflows after the migration. The app tracks hours, billing, reports, users, roles, and permissions, so quiet wrong answers matter more than loud crashes.
 
-## Why a transplant instead of an incremental upgrade
+## Why a fresh-app transplant instead of an incremental upgrade
 
 The standard advice is to upgrade one version at a time. The official Rails guides recommend it, and so does most consulting experience. We did not do that here, and it was a project-specific call, not a claim that transplants are safer in general.
 
@@ -36,14 +36,14 @@ A rough rule for choosing. A transplant is worth considering when the app is far
 
 ## What actually broke
 
-Here is what broke, and why the automated suite did not catch it.
+Here are the migration regressions, and why the automated suite did not catch them.
 
 | Symptom | Root cause | Why the tests missed it | How it was found |
 | --- | --- | --- | --- |
 | Every logged-in request returned 500 | Dev config used a plain `Logger`. `activerecord-session_store` calls `#silence` on the Active Record logger on every session lookup, and a plain `Logger` does not provide it. `ActiveSupport::Logger` does. | The fault was in development-environment config. Specs run in the test env with a different logger. | Logging in to the running app |
 | Calendar pages 500'd | `to_s(:db)` was renamed to `to_fs(:db)` | The calendar date helper had no spec of its own | Browser workflow check |
-| Monthly and billing totals crashed | `Enumerable#sum` now starts from integer `0`, so summing the app's interval values raised a TypeError. Fixed by passing an explicit zero value to `sum`. | The code that calculates the totals had no request spec | Browser check of report totals |
-| Two reports 500'd | Rails 8 sent the `?` array bind as `text[]`, so `array[?] && role_ids` became `text[] && integer[]`, an operator Postgres does not define. Fixed with `::int[]`. | One query had a spec and failed there. The second was in a report path with none. | Existing suite for the first, browser check for the second |
+| Monthly and billing totals crashed | The totals code sums interval values with `Enumerable#sum`, and on the upgraded stack the sum began with integer `0`, producing `0 + Interval` and a TypeError. Fixed by supplying an explicit interval identity to `sum`. | The code that calculates the totals had no request spec | Browser check of report totals |
+| Two reports 500'd | In the upgraded stack, these queries' array parameters were typed as `text[]` while the stored columns were `integer[]`, and PostgreSQL has no overlap operator for that pair. Fixed by casting the parameters explicitly with `::int[]`. | One query had a spec and failed there. The second was in a report path with none. | Existing suite for the first, browser check for the second |
 | The project search 500'd | Rails blocks raw SQL fragments in `order`. The results were ranked with a raw `ts_rank(...)` expression, now wrapped in `Arel.sql`. | No spec exercised that ordering | Browser search check |
 | Three React admin pages rendered a raw object string, weeks later | `yajl-ruby` had quietly patched `JSON.dump`. Removing the gem broke `render json: JSON.dump(relation)`. Fixed with `render json: relation`. | The one spec that hit these endpoints checked the status code, not the body. A 200 with a garbage string still passed. | The pages broke after the gem was removed |
 
@@ -56,7 +56,7 @@ The login failure is the one to sit with. The fix was one word:
 + config.active_record.logger = ActiveSupport::Logger.new(File.join(Rails.root, 'log', 'activerecord.log'))
 ```
 
-A plain `Logger` no longer carries the `#silence` method that `activerecord-session_store` calls on every session lookup. `ActiveSupport::Logger` does. Every logged-in request 500'd until that line changed. No backend spec caught it, because the fault lived in development-environment config that the test suite never loads. Running the app caught it in seconds.
+The plain `Logger` configured here did not provide the logger-silencing interface that `activerecord-session_store` expects when it looks up a session. `ActiveSupport::Logger` did. Every logged-in request 500'd until that line changed. No backend spec caught it, because the fault lived in development-environment config that the test suite never loads. Running the app caught it in seconds.
 
 ## What each layer of testing actually proved
 
@@ -89,35 +89,17 @@ That distinction, upgrade regression versus pre-existing bug versus unsupported 
 
 I used AI heavily, but the useful part was not that it wrote code. It was that it made exploring unfamiliar, obsolete code cheap. The pattern was always the same. It proposed, I verified, and nothing merged without evidence.
 
-- **Removed idioms.** The app registered a custom PostgreSQL column type for its scheduling fields through `alias_method_chain`, which no longer exists. AI explained the old idiom and drafted the modern form. I confirmed the type still registered before keeping it.
-
-```ruby
-# Rails 8: prepend + super. The Rails 5 version did the same job with alias_method_chain, now removed.
-module CronSpecTypeRegistration
-  def initialize_type_map(mapping = type_map)
-    super
-    oid = select_value("SELECT oid FROM pg_type WHERE typname = 'cron_spec'")
-    if oid
-      mapping.register_type(
-        oid.to_i,
-        ActiveRecord::ConnectionAdapters::PostgreSQL::OID::SpecializedString.new(:cron_spec)
-      )
-    end
-  end
-end
-ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.prepend(CronSpecTypeRegistration)
-```
-
-- **Old behavior.** It explained why `to_s(:db)`, `sum` without a starting value, and untyped array binds behave differently now. I confirmed each against the running app, not against the explanation.
+- **Removed idioms.** One initializer extended Rails' PostgreSQL type map for the application's custom scheduling type using `alias_method_chain`, an old Rails extension pattern that no longer exists. AI explained the old idiom and drafted the replacement, a module hooked in with `prepend` and `super`. I kept the change only after confirming the scheduling fields still loaded, saved, and returned correctly.
+- **Old behavior.** It explained why `to_s(:db)`, `sum` without a starting value, and untyped array binds behaved differently on the upgraded stack. I confirmed each against the running app, not against the explanation.
 - **Strategy.** I used it to compare transplant versus incremental and to run a pre-mortem before committing. I made the decision.
 
 I also kept a few plain files in the repo: the working rules, how we were collaborating, and the current resume point. A fresh session could start with "read the notes and continue," which kept the work easy to pick back up.
 
 The one time I trusted an assumption instead of testing it, it cost me. Early on I kept an old JSON library, `yajl-ruby`, because I assumed the API endpoints needed it. They did not. It was quietly patching `JSON.dump` so several admin endpoints serialized their query results as real arrays, and the suite stayed green the whole time. Weeks later I removed the gem, and three React admin pages started rendering a raw object string instead of a list. The fix was to stop leaning on the patched `JSON.dump` and let Rails encode the response with `render json: relation`. The lesson matched everything else here. An untested assumption is not a safe one, however green the suite looks.
 
-## A method for risky migrations
+## A method for risky Rails migrations
 
-If I did another upgrade like this, I would keep the same short method:
+If I did another AI-assisted Rails upgrade like this, I would keep the same short method:
 
 - Reproduce a failure on the old version before calling it a regression.
 - Treat load checks, unit tests, end-to-end tests, and browser checks as four separate kinds of evidence, not one.
