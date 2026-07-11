@@ -49,7 +49,9 @@ Here are the migration regressions, and why the automated suite did not catch th
 
 One note on that raw-SQL fix. `Arel.sql` does not sanitize anything. It marks a fragment as trusted. It was safe here only because the search phrase is stripped down to word characters and whitespace before it reaches the query. Wrapping arbitrary input in `Arel.sql` would just launder an injection.
 
-The login failure is the one to sit with. The fix was one word:
+The fixes themselves were tiny. That is what makes them worth showing: nothing this small should be able to break every login in an app.
+
+The login failure was one word:
 
 ```ruby
 - config.active_record.logger = Logger.new(File.join(Rails.root, 'log', 'activerecord.log'))
@@ -57,6 +59,22 @@ The login failure is the one to sit with. The fix was one word:
 ```
 
 Older Rails patched the standard library's `Logger` so that every logger responded to `#silence`. Rails 7.1 stopped doing that, and `activerecord-session_store` calls `#silence` on the Active Record logger when it looks up a session. The plain `Logger` configured in this app's development environment did not have the method, so every logged-in request 500'd until that one word changed. The specs were not careless. They run in the test environment by design, and this line lives in a file they never load. Running the app surfaced it in seconds.
+
+The crashing totals were one argument, the explicit identity that `sum` used to supply implicitly:
+
+```ruby
+- subitems.sum { |item| Interval.new(item[:total]) }
++ subitems.sum(Interval.new) { |item| Interval.new(item[:total]) }
+```
+
+And the array-cast failure was six characters, in a query comparing a bound array against an `integer[]` column:
+
+```ruby
+- scope.where("array[?] && role_ids", role_ids)
++ scope.where("array[?]::int[] && role_ids", role_ids)
+```
+
+That one bit twice, in two different reports, which is why it is worth a grep for any other `array[?]` used against an integer-array column.
 
 ### What each verification layer proved
 
