@@ -38,14 +38,14 @@ A rough rule for choosing. A transplant is worth considering when the app is far
 
 Here is what broke, and why the automated suite did not catch it.
 
-| Symptom | Root cause | Why the tests missed it | How it was found | Permanent guard |
-| --- | --- | --- | --- | --- |
-| Every logged-in request returned 500 | Dev config used a plain `Logger`. `activerecord-session_store` calls `#silence` on the AR logger on every session lookup, and a plain `Logger` does not provide it. `ActiveSupport::Logger` does. | The fault was in development-environment config. Specs run in the test env with a different logger. | Logging in to the running app | None automated. Checklist LOGIN tests re-check it. |
-| Calendar pages 500'd | `to_s(:db)` was renamed to `to_fs(:db)` | `WorkDay.db_days` had no spec | Browser workflow check | `previous_next returns 200` guards a sibling `to_fs` caller. The calendar caller still has none. |
-| Monthly and billing totals crashed | `Enumerable#sum` now starts from `0`, so `0 + Interval` raised. Fixed with an explicit identity, `sum(Interval.new)`. | The totals code had no request spec | Browser check of report totals | None automated. Checklist REP-14 re-checks that rows sum to the total. |
-| Two reports 500'd | Rails 8 sent the `?` array bind as `text[]`, so `array[?] && role_ids` became `text[] && integer[]`, an operator Postgres does not define. Fixed with `::int[]`. | One query had a spec and failed there. The second was in a report with none. | Existing suite for the first, browser check for the second | Existing suite covers the role-id query. The report query has none. |
-| Chart search 500'd | Rails blocks raw SQL fragments in `order`. Wrapped the known-safe expression in `Arel.sql`. | No spec exercised that ordering | Browser search of charts | None automated |
-| Three React admin pages rendered a raw object string, weeks later | `yajl-ruby` had quietly patched `JSON.dump`. Removing the gem broke `render json: JSON.dump(relation)`. Fixed with `render json: relation`. | Those admin endpoints had no specs, and the patch kept them green | The pages broke after the gem was removed | None as a unit spec. The 18/18 e2e run confirmed the fix. |
+| Symptom | Root cause | Why the tests missed it | How it was found |
+| --- | --- | --- | --- |
+| Every logged-in request returned 500 | Dev config used a plain `Logger`. `activerecord-session_store` calls `#silence` on the Active Record logger on every session lookup, and a plain `Logger` does not provide it. `ActiveSupport::Logger` does. | The fault was in development-environment config. Specs run in the test env with a different logger. | Logging in to the running app |
+| Calendar pages 500'd | `to_s(:db)` was renamed to `to_fs(:db)` | The calendar date helper had no spec of its own | Browser workflow check |
+| Monthly and billing totals crashed | `Enumerable#sum` now starts from integer `0`, so summing the app's interval values raised a TypeError. Fixed by passing an explicit zero value to `sum`. | The code that calculates the totals had no request spec | Browser check of report totals |
+| Two reports 500'd | Rails 8 sent the `?` array bind as `text[]`, so `array[?] && role_ids` became `text[] && integer[]`, an operator Postgres does not define. Fixed with `::int[]`. | One query had a spec and failed there. The second was in a report path with none. | Existing suite for the first, browser check for the second |
+| The project search 500'd | Rails blocks raw SQL fragments in `order`. The results were ranked with a raw `ts_rank(...)` expression, now wrapped in `Arel.sql`. | No spec exercised that ordering | Browser search check |
+| Three React admin pages rendered a raw object string, weeks later | `yajl-ruby` had quietly patched `JSON.dump`. Removing the gem broke `render json: JSON.dump(relation)`. Fixed with `render json: relation`. | The one spec that hit these endpoints checked the status code, not the body. A 200 with a garbage string still passed. | The pages broke after the gem was removed |
 
 One note on that raw-SQL fix. `Arel.sql` does not sanitize anything. It marks a fragment as trusted. It was safe here only because the search phrase is reduced to word characters before it reaches the query.
 
@@ -72,12 +72,12 @@ The checks were not one thing. Each layer proved something different, and it hel
 
 A few checks, in the shape they are written:
 
-- **LOGIN-01**: log in with valid credentials. Expect: lands on the calendar, nav shows the logged-in email. Evidence: screenshot.
-- **AUTH-01**: as a non-admin, open an admin URL directly. Expect: access refused, the roles editor does not render. Evidence: screenshot.
-- **REP-14**: on a generated report, compare the row values to the grand total. Expect: the rows sum to the shown total. Evidence: screenshot.
-- **XC-02**: across the whole run, watch for any 5xx response or red console error. Expect: none, and list every one seen.
+- **Valid login**: log in with valid credentials. Expect: lands on the calendar, nav shows the logged-in email. Evidence: screenshot.
+- **Permission wall**: as a non-admin, open an admin URL directly. Expect: access refused, the admin page does not render. Evidence: screenshot.
+- **Report totals**: on a generated report, compare the row values to the grand total. Expect: the rows sum to the shown total. Evidence: screenshot.
+- **Error roundup**: across the whole run, watch for any 5xx response or red console error. Expect: none, and list every one seen.
 
-The checklist ships in the repo at `testing/checklist.md`, so a human run and an AI browser run are judged against the same artifact. Several of the new backend guard tests exist only because a checklist run found the failure first.
+The checklist lives in the repository as a plain Markdown file, so a human run and an AI browser run are judged against the same artifact. Several of the new backend guard tests exist only because a checklist run found the failure first.
 
 ## Regression, or already broken?
 
@@ -89,7 +89,7 @@ That distinction, upgrade regression versus pre-existing bug versus unsupported 
 
 I used AI heavily, but the useful part was not that it wrote code. It was that it made exploring unfamiliar, obsolete code cheap. The pattern was always the same. It proposed, I verified, and nothing merged without evidence.
 
-- **Removed idioms.** The app registered a custom PostgreSQL `cron_spec` type through `alias_method_chain`, which no longer exists. AI explained the old idiom and drafted the modern form. I confirmed the type still registered before keeping it.
+- **Removed idioms.** The app registered a custom PostgreSQL column type for its scheduling fields through `alias_method_chain`, which no longer exists. AI explained the old idiom and drafted the modern form. I confirmed the type still registered before keeping it.
 
 ```ruby
 # Rails 8: prepend + super. The Rails 5 version did the same job with alias_method_chain, now removed.
@@ -121,7 +121,7 @@ If I did another upgrade like this, I would keep the same short method:
 
 - Reproduce a failure on the old version before calling it a regression.
 - Treat load checks, unit tests, end-to-end tests, and browser checks as four separate kinds of evidence, not one.
-- Turn every manually found regression into an automated guard where the path can hold one.
+- Turn every manually found regression into an automated test.
 - Require visible evidence for browser checks: an expected result and a screenshot, not "looks fine."
 - Keep the commit history small and readable, so a reviewer can follow the upgrade one change at a time.
 
